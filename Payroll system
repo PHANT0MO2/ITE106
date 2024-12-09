@@ -1,0 +1,197 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.*;
+
+public class PayrollSystem {
+    private JFrame frame;
+    private JTextField employeeIDField, nameField, hourlyRateField, hoursWorkedField;
+    private JTextArea displayArea;
+    private JButton addButton, calculateButton, saveButton, displayButton;
+    private List<Employee> employees;
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new PayrollSystem().createAndShowGUI());
+    }
+
+    public PayrollSystem() {
+        employees = new ArrayList<>();
+        loadEmployees();
+    }
+
+    private void createAndShowGUI() {
+        frame = new JFrame("Payroll System");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(400, 400);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(5, 2));
+
+        panel.add(new JLabel("Employee ID:"));
+        employeeIDField = new JTextField();
+        panel.add(employeeIDField);
+        
+        panel.add(new JLabel("Name:"));
+        nameField = new JTextField();
+        panel.add(nameField);
+        
+        panel.add(new JLabel("Hourly Rate:"));
+        hourlyRateField = new JTextField();
+        panel.add(hourlyRateField);
+        
+        panel.add(new JLabel("Hours Worked:"));
+        hoursWorkedField = new JTextField();
+        panel.add(hoursWorkedField);
+
+        addButton = new JButton("Add Employee");
+        calculateButton = new JButton("Calculate Pay");
+        saveButton = new JButton("Save Record");
+        displayButton = new JButton("Display Records");
+
+        panel.add(addButton);
+        panel.add(calculateButton);
+        panel.add(saveButton);
+        panel.add(displayButton);
+
+        displayArea = new JTextArea(5, 30);
+        displayArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(displayArea);
+
+        frame.add(panel, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+
+        addButton.addActionListener(e -> addEmployee());
+        calculateButton.addActionListener(e -> calculatePay());
+        saveButton.addActionListener(e -> saveRecord());
+        displayButton.addActionListener(e -> displayRecords());
+
+        frame.setVisible(true);
+    }
+
+    private void addEmployee() {
+        String employeeID = employeeIDField.getText().trim();
+        String name = nameField.getText().trim();
+        String hourlyRateText = hourlyRateField.getText().trim();
+        String hoursWorkedText = hoursWorkedField.getText().trim();
+
+        if (employeeID.isEmpty() || name.isEmpty() || hourlyRateText.isEmpty() || hoursWorkedText.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "All fields must be filled.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            double hourlyRate = Double.parseDouble(hourlyRateText);
+            double hoursWorked = Double.parseDouble(hoursWorkedText);
+            Employee employee = new Employee(employeeID, name, hourlyRate, hoursWorked);
+            employees.add(employee);
+            displayArea.setText("Employee added: " + name);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(frame, "Hourly Rate and Hours Worked must be valid numbers.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void calculatePay() {
+        String employeeID = employeeIDField.getText().trim();
+
+        if (employeeID.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Please enter a valid Employee ID.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Employee employee = findEmployeeByID(employeeID);
+        if (employee != null) {
+            double grossPay = employee.getHourlyRate() * employee.getHoursWorked();
+            double netPay = grossPay - (grossPay * 0.10); // 10% tax deduction
+            displayArea.setText("Gross Pay: " + grossPay + "\nNet Pay (after tax): " + netPay);
+        } else {
+            displayArea.setText("Employee not found.");
+        }
+    }
+
+    private void saveRecord() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("payroll.txt", false))) {
+            for (Employee employee : employees) {
+                writer.write(employee.toCSV());
+                writer.newLine();
+            }
+            displayArea.setText("Employee records saved.");
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "Error saving records.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void displayRecords() {
+        StringBuilder sb = new StringBuilder();
+        for (Employee employee : employees) {
+            sb.append(employee).append("\n");
+        }
+        displayArea.setText(sb.toString());
+    }
+
+    private Employee findEmployeeByID(String employeeID) {
+        for (Employee employee : employees) {
+            if (employee.getEmployeeID().equals(employeeID)) {
+                return employee;
+            }
+        }
+        return null;
+    }
+
+    private void loadEmployees() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("payroll.txt"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                if (data.length == 4) {
+                    String employeeID = data[0];
+                    String name = data[1];
+                    double hourlyRate = Double.parseDouble(data[2]);
+                    double hoursWorked = Double.parseDouble(data[3]);
+                    employees.add(new Employee(employeeID, name, hourlyRate, hoursWorked));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("No existing payroll records found.");
+        }
+    }
+
+    static class Employee {
+        private String employeeID;
+        private String name;
+        private double hourlyRate;
+        private double hoursWorked;
+
+        public Employee(String employeeID, String name, double hourlyRate, double hoursWorked) {
+            this.employeeID = employeeID;
+            this.name = name;
+            this.hourlyRate = hourlyRate;
+            this.hoursWorked = hoursWorked;
+        }
+
+        public String getEmployeeID() {
+            return employeeID;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public double getHourlyRate() {
+            return hourlyRate;
+        }
+
+        public double getHoursWorked() {
+            return hoursWorked;
+        }
+
+        public String toCSV() {
+            return employeeID + "," + name + "," + hourlyRate + "," + hoursWorked;
+        }
+
+        @Override
+        public String toString() {
+            return "ID: " + employeeID + ", Name: " + name + ", Rate: " + hourlyRate + ", Hours: " + hoursWorked;
+        }
+    }
+}
