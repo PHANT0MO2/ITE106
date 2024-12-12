@@ -1,0 +1,183 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.*;
+public class PhonebookApp {
+    private JFrame frame;
+    private JTextField nameField, phoneField;
+    private JTextArea displayArea;
+    private JButton addButton, deleteButton, searchButton, updateButton;
+    private ArrayList<Contact> contacts;
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new PhonebookApp().createAndShowGUI());
+    }
+    public PhonebookApp() {
+        contacts = new ArrayList<>();
+        loadContacts();
+    }
+    private void createAndShowGUI() {
+        frame = new JFrame("Phonebook System");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(400, 400);
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(5, 2));
+        JLabel nameLabel = new JLabel("Name:");
+        nameField = new JTextField();
+        JLabel phoneLabel = new JLabel("Phone:");
+        phoneField = new JTextField();
+        panel.add(nameLabel);
+        panel.add(nameField);
+        panel.add(phoneLabel);
+        panel.add(phoneField);
+        addButton = new JButton("Add Contact");
+        deleteButton = new JButton("Delete Contact");
+        searchButton = new JButton("Search Contact");
+        updateButton = new JButton("Update Contact");
+        panel.add(addButton);
+        panel.add(deleteButton);
+        panel.add(searchButton);
+        panel.add(updateButton);
+        displayArea = new JTextArea(10, 30);
+        displayArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(displayArea);
+
+        frame.add(panel, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+        addButton.addActionListener(e -> addContact());
+        deleteButton.addActionListener(e -> deleteContact());
+        searchButton.addActionListener(e -> searchContact());
+        updateButton.addActionListener(e -> updateContact());
+        frame.setVisible(true);
+    }
+    private void addContact() {
+        String name = nameField.getText().trim();
+        String phone = phoneField.getText().trim();
+
+        if (name.isEmpty() || phone.isEmpty() || !isValidPhone(phone)) {
+            JOptionPane.showMessageDialog(frame, "Invalid input or phone number.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        Contact newContact = new Contact(name, phone);
+        contacts.add(newContact);
+        saveContacts();
+        displayContacts();
+    }
+    private void deleteContact() {
+        String name = nameField.getText().trim();
+
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Please enter a name to delete.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        Contact contactToDelete = null;
+        for (Contact contact : contacts) {
+            if (contact.getName().equalsIgnoreCase(name)) {
+                contactToDelete = contact;
+                break;
+            }
+        }
+        if (contactToDelete != null) {
+            contacts.remove(contactToDelete);
+            saveContacts();
+            displayContacts();
+        } else {
+            JOptionPane.showMessageDialog(frame, "Contact not found.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    private void searchContact() {
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Please enter a name to search.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        StringBuilder result = new StringBuilder();
+        for (Contact contact : contacts) {
+            if (contact.getName().equalsIgnoreCase(name)) {
+                result.append(contact).append("\n");
+            }
+        }
+        if (result.length() == 0) {
+            result.append("Contact not found.");
+        }
+      
+        displayArea.setText(result.toString());
+    }
+    private void updateContact() {
+        String name = nameField.getText().trim();
+        String newPhone = phoneField.getText().trim();
+
+        if (name.isEmpty() || newPhone.isEmpty() || !isValidPhone(newPhone)) {
+            JOptionPane.showMessageDialog(frame, "Invalid input or phone number.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        boolean found = false;
+        for (Contact contact : contacts) {
+            if (contact.getName().equalsIgnoreCase(name)) {
+                contact.setPhone(newPhone);
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            saveContacts();
+            displayContacts();
+        } else {
+            JOptionPane.showMessageDialog(frame, "Contact not found.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    private boolean isValidPhone(String phone) {
+        return phone.matches("\\d{10}");
+    }
+    private void displayContacts() {
+        StringBuilder sb = new StringBuilder();
+        for (Contact contact : contacts) {
+            sb.append(contact).append("\n");
+        }
+        displayArea.setText(sb.toString());
+    }
+    private void saveContacts() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("contacts.txt"))) {
+            for (Contact contact : contacts) {
+                writer.write(contact.getName() + "," + contact.getPhone());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "Error saving contacts.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    private void loadContacts() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("contacts.txt"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                if (data.length == 2) {
+                    contacts.add(new Contact(data[0], data[1]));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error loading contacts.");
+        }
+    }
+    class Contact {
+        private String name;
+        private String phone;
+        public Contact(String name, String phone) {
+            this.name = name;
+            this.phone = phone;
+        }
+        public String getName() {
+            return name;
+        }
+        public String getPhone() {
+            return phone;
+        }
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+        @Override
+        public String toString() {
+            return "Name: " + name + ", Phone: " + phone;
+        }
+    }
+}
